@@ -2652,7 +2652,7 @@ class CJ4_SystemFMS extends NavSystemElement {
 
                         // Set ETA
                         let previousWaypointETAValue;
-                        if (previousWaypoint && previousWaypoint.ident != flightPlanManager.getOrigin().ident) {
+                        if (previousWaypoint && flightPlanManager.getOrigin() !== undefined && previousWaypoint.ident != flightPlanManager.getOrigin().ident) {
                             if (this.previousWaypoint == undefined || this.previousWaypoint.ident != previousWaypoint.ident) {
                                 const seconds = Number.parseInt(UTCTime);
                                 previousWaypointETAValue = Utils.SecondsToDisplayTime(seconds, true, false, false);
@@ -2886,6 +2886,7 @@ var CJ4_MapSymbol;
     CJ4_MapSymbol[CJ4_MapSymbol["AIRPORTS"] = 4] = "AIRPORTS";
     CJ4_MapSymbol[CJ4_MapSymbol["INTERSECTS"] = 5] = "INTERSECTS";
     CJ4_MapSymbol[CJ4_MapSymbol["NAVAIDS"] = 6] = "NAVAIDS";
+    CJ4_MapSymbol[CJ4_MapSymbol["NDBS"] = 7] = "NDBS";
 })(CJ4_MapSymbol || (CJ4_MapSymbol = {}));
 class CJ4_MapContainer extends NavSystemElementContainer {
     constructor(_name, _root) {
@@ -2897,7 +2898,7 @@ class CJ4_MapContainer extends NavSystemElementContainer {
         this.isWeatherVisible = undefined;
         this.isGwxVisible = undefined;
         this.isExtended = undefined;
-        this.zoomRanges = [10, 20, 40, 80, 160, 320];
+        this.zoomRanges = [5, 10, 25, 50, 100, 200, 300];
         this.zoomFactor = 1.0;
         this.symbols = -1;
         this.symbolsToSimvar = false;
@@ -2916,13 +2917,8 @@ class CJ4_MapContainer extends NavSystemElementContainer {
         this.map.instrument.showNDBs = false;
         this.map.instrument.showAirports = false;
         this.map.instrument.showAirspaces = false;
-        this.map.instrument.intersectionMaxRange = Infinity;
-        this.map.instrument.vorMaxRange = Infinity;
-        this.map.instrument.ndbMaxRange = Infinity;
-        this.map.instrument.smallAirportMaxRange = Infinity;
-        this.map.instrument.medAirportMaxRange = Infinity;
-        this.map.instrument.largeAirportMaxRange = Infinity;
-        this.map.instrument.setZoom(0);
+        this.map.instrument.setZoom(1);
+        SimVar.SetSimVarValue("L:CJ4_MAP_ZOOM", "number", 1);
     }
     onUpdate(_deltaTime) {
         super.onUpdate(_deltaTime);
@@ -3067,7 +3063,7 @@ class CJ4_MapContainer extends NavSystemElementContainer {
         this.map.instrument.showAirspaces = (this.symbols & (1 << CJ4_MapSymbol.AIRSPACES)) ? true : false;
         this.map.instrument.showAirways = (this.symbols & (1 << CJ4_MapSymbol.AIRWAYS)) ? true : false;
         this.map.instrument.showVORs = (this.symbols & (1 << CJ4_MapSymbol.NAVAIDS)) ? true : false;
-        this.map.instrument.showNDBs = (this.symbols & (1 << CJ4_MapSymbol.NAVAIDS)) ? true : false;
+        this.map.instrument.showNDBs = (this.symbols & (1 << CJ4_MapSymbol.NDBS)) ? true : false;
         this.map.instrument.showAirports = (this.symbols & (1 << CJ4_MapSymbol.AIRPORTS)) ? true : false;
         this.map.instrument.showIntersections = (this.symbols & (1 << CJ4_MapSymbol.INTERSECTS)) ? true : false;
     }
@@ -3652,6 +3648,7 @@ var CJ4_PopupMenu_Key;
     CJ4_PopupMenu_Key[CJ4_PopupMenu_Key["MIN_ALT_RADIO_VAL"] = 26] = "MIN_ALT_RADIO_VAL";
     CJ4_PopupMenu_Key[CJ4_PopupMenu_Key["SYS_SRC"] = 27] = "SYS_SRC";
     CJ4_PopupMenu_Key[CJ4_PopupMenu_Key["AOA"] = 28] = "AOA";
+    CJ4_PopupMenu_Key[CJ4_PopupMenu_Key["FLT_DIR"] = 29] = "FLT_DIR";
 })(CJ4_PopupMenu_Key || (CJ4_PopupMenu_Key = {}));
 class CJ4_PopupMenu_Handler extends Airliners.PopupMenu_Handler {
     constructor() {
@@ -3804,6 +3801,7 @@ class CJ4_PopupMenu_PFD extends CJ4_PopupMenu_Handler {
                 //this.addTitle("UNITS", this.textSize, 0.3);
                 this.addList("PRESS", this.textSize, ["IN", "HPA"], [CJ4_PopupMenu_Key.UNITS_PRESS]);
                 this.addList("MTR ALT", this.textSize, ["OFF", "ON"], [CJ4_PopupMenu_Key.UNITS_MTR_ALT]);
+                this.addList("FLT DIR", this.textSize, ["V-BAR", "X-PTR"], [CJ4_PopupMenu_Key.FLT_DIR]);
             }
             this.endSection();
             this.beginSection();

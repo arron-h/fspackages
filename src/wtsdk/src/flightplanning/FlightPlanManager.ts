@@ -62,6 +62,13 @@ export class FlightPlanManager {
     this.__currentFlightPlanIndex = value;
   }
 
+  /**
+   * Gets the current stored version of the flight plan.
+   */
+  public get CurrentFlightPlanVersion() {
+    return this._currentFlightPlanVersion
+  }
+
   public update(_deltaTime: number): void {
 
   }
@@ -260,7 +267,6 @@ export class FlightPlanManager {
     const currentFlightPlan = this._flightPlans[fplnIndex];
     if (index >= 0 && index < currentFlightPlan.length) {
       currentFlightPlan.activeWaypointIndex = index;
-      Coherent.call("SET_ACTIVE_WAYPOINT_INDEX", index + 1);
 
       if (currentFlightPlan.directTo.isActive && currentFlightPlan.directTo.waypointIsInFlightPlan
         && currentFlightPlan.activeWaypointIndex > currentFlightPlan.directTo.planWaypointIndex) {
@@ -587,6 +593,20 @@ export class FlightPlanManager {
     if (setActive) {
       //currentFlightPlan.activeWaypointIndex = index;
     }
+
+    this._updateFlightPlanVersion();
+    callback();
+  }
+
+  /**
+   * Adds a user waypoint to the current flight plan.
+   * @param waypoint The user waypoint to add.
+   * @param index The index to add the waypoint at in the flight plan.
+   * @param callback A callback to call once the operation completes.
+   */
+  public async addUserWaypoint(waypoint: WayPoint, index = Infinity, callback = () => { }): Promise<void> {
+    const currentFlightPlan = this._flightPlans[this._currentFlightPlanIndex];
+    currentFlightPlan.addWaypoint(waypoint, index);
 
     this._updateFlightPlanVersion();
     callback();

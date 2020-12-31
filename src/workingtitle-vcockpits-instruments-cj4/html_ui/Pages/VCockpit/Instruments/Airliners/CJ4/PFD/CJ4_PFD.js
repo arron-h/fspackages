@@ -454,6 +454,10 @@ class CJ4_PFD extends BaseAirliners {
         SimVar.SetSimVarValue("L:XMLVAR_Baro_Selector_HPA_1", "Bool", (baroUnits == "HPA") ? 1 : 0);
         let mtrsOn = _dict.get(CJ4_PopupMenu_Key.UNITS_MTR_ALT);
         this.horizon.showMTRS((mtrsOn == "ON") ? true : false);
+
+        let fltDirStatus = _dict.get(CJ4_PopupMenu_Key.FLT_DIR);
+        SimVar.SetSimVarValue("L:WT_CJ4_FLT_DIR_STATUS", "Bool", (fltDirStatus == "X-PTR") ? 1 : 0);
+
         let aoaSetting = _dict.get(CJ4_PopupMenu_Key.AOA);
         if (aoaSetting) {
             if (aoaSetting == "AUTO") {
@@ -552,6 +556,8 @@ class CJ4_PFD extends BaseAirliners {
         let baroHPA = SimVar.GetSimVarValue("L:XMLVAR_Baro_Selector_HPA_1", "Bool");
         _dict.set(CJ4_PopupMenu_Key.UNITS_PRESS, (baroHPA) ? "HPA" : "IN");
         _dict.set(CJ4_PopupMenu_Key.UNITS_MTR_ALT, (this.horizon.isMTRSVisible()) ? "ON" : "OFF");
+        let fltDirStatus = SimVar.GetSimVarValue("L:WT_CJ4_FLT_DIR_STATUS", "Bool");
+        _dict.set(CJ4_PopupMenu_Key.FLT_DIR, (fltDirStatus) ? "X-PTR" : "V-BAR");
         let aoaSettingFill = SimVar.GetSimVarValue("L:WT_CJ4_PFD1_AOA", "Number").toFixed(0);
         if (aoaSettingFill) {
             if (aoaSettingFill == 0) {
@@ -744,10 +750,14 @@ class CJ4_Altimeter extends NavSystemElement {
     }
 }
 class CJ4_Attitude extends NavSystemElement {
+    // constructor() {
+    //     this.wtFlightDirectorBankValue = 0;
+    // }
     init(root) {
         this.svg = this.gps.getChildById("Horizon");
         this.svg.aircraft = Aircraft.CJ4;
         this.svg.gps = this.gps;
+        this.wtFlightDirectorBankValue = 0;
     }
     onEnter() {
     }
@@ -762,7 +772,21 @@ class CJ4_Attitude extends NavSystemElement {
         this.svg.setAttribute("radio_altitude", Simplane.getAltitudeAboveGround().toString());
         this.svg.setAttribute("flight_director-active", SimVar.GetSimVarValue("AUTOPILOT FLIGHT DIRECTOR ACTIVE", "Bool") ? "true" : "false");
         this.svg.setAttribute("flight_director-pitch", SimVar.GetSimVarValue("AUTOPILOT FLIGHT DIRECTOR PITCH", "degree"));
-        this.svg.setAttribute("flight_director-bank", SimVar.GetSimVarValue("AUTOPILOT FLIGHT DIRECTOR BANK", "degree"));
+        const apMasterActive = SimVar.GetSimVarValue("AUTOPILOT MASTER", "Bool") == 1;
+        //const bank = apMasterActive ? SimVar.GetSimVarValue("AUTOPILOT FLIGHT DIRECTOR BANK", "degree") : -1 * SimVar.GetSimVarValue("L:WT_FLIGHT_DIRECTOR_BANK", "number");
+        if (apMasterActive) {
+            this.svg.setAttribute("flight_director-bank", SimVar.GetSimVarValue("AUTOPILOT FLIGHT DIRECTOR BANK", "degree"));
+        } else {
+            const bank = SimVar.GetSimVarValue("L:WT_FLIGHT_DIRECTOR_BANK", "number");
+            let setBank = bank;
+            if (Math.abs(this.wtFlightDirectorBankValue - bank) > 0.5) {
+                setBank = bank < this.wtFlightDirectorBankValue + 0.5 ? this.wtFlightDirectorBankValue - 0.5 :  bank > this.wtFlightDirectorBankValue ? this.wtFlightDirectorBankValue + 1 : bank;
+            }
+            // console.log("wtFlightDirectorBankValue " + this.wtFlightDirectorBankValue);
+            // console.log("setBank " + setBank);
+            this.wtFlightDirectorBankValue = setBank;
+            this.svg.setAttribute("flight_director-bank", (-1 * setBank));
+        }
         this.svg.setAttribute("half_bank-active", SimVar.GetSimVarValue("AUTOPILOT MAX BANK", "degree").toFixed(0));
     }
     onExit() {
@@ -806,6 +830,9 @@ class CJ4_APDisplay extends NavSystemElement {
         Avionics.Utils.diffAndSet(this.AP_Status, apMasterActive ? "AP" : "");
         if (apMasterActive && !ydActive) {
             SimVar.SetSimVarValue("K:YAW_DAMPER_TOGGLE", "number", 1);
+        }
+        if (apMasterActive && !flightDirector) {
+            SimVar.SetSimVarValue("K:TOGGLE_FLIGHT_DIRECTOR", "number", 1);
         }
         if (apMasterActive) {
             Avionics.Utils.diffAndSet(this.AP_YDStatus, "");
